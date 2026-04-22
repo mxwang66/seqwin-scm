@@ -1,0 +1,18 @@
+[build-system]
+requires = ["scikit-build-core>=0.11", "pybind11>=3.0", "numpy"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "seqwin_scm"
+version = "0.1.0"
+description = "Seqwin SCM algorithm ported to C++ with pybind11"
+readme = "README.md"
+authors = [
+    { name = "Your Name", email = "you@example.com" }
+]
+requires-python = ">=3.9"
+dependencies = ["numpy"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+]
