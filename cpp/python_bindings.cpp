@@ -1,3 +1,4 @@
+#include <memory>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include "scm_core.hpp"
@@ -11,7 +12,7 @@ PYBIND11_MODULE(_core, m) {
         [](py::array_t<uint64_t> node_start,
            py::array_t<uint64_t> node_stop,
            py::array_t<uint16_t> kmer_assembly_idx,
-           py::array_t<bool> is_target,
+           py::array_t<uint8_t> is_target,
            int max_rules, double p, bool disjunction
         ) {
             // Extract raw pointers and sizes
@@ -22,7 +23,7 @@ PYBIND11_MODULE(_core, m) {
             const uint64_t* ns_ptr = static_cast<uint64_t*>(ns_buf.ptr);
             const uint64_t* no_ptr = static_cast<uint64_t*>(no_buf.ptr);
             const uint16_t* km_ptr = static_cast<uint16_t*>(km_buf.ptr);
-            const bool* it_ptr = static_cast<bool*>(it_buf.ptr);
+            const uint8_t* it_ptr = static_cast<uint8_t*>(it_buf.ptr);
             size_t n_nodes = ns_buf.shape[0];
             size_t n_assemblies = it_buf.shape[0];
 
@@ -38,24 +39,32 @@ PYBIND11_MODULE(_core, m) {
                 );
             }
 
-            // Convert results to NumPy arrays
-            py::array_t<long long> py_nodes(res.nodes.size());
-            long long* py_nodes_ptr = static_cast<long long*>(py_nodes.request().ptr);
-            for (size_t i = 0; i < res.nodes.size(); ++i) {
-                py_nodes_ptr[i] = res.nodes[i];
-            }
-            py::array_t<bool> py_pol(res.polarities.size());
-            bool* py_pol_ptr = static_cast<bool*>(py_pol.request().ptr);
-            for (size_t i = 0; i < res.polarities.size(); ++i) {
-                py_pol_ptr[i] = (res.polarities[i] != 0);
-            }
-            py::array_t<bool> py_pred(res.pred.size());
-            bool* py_pred_ptr = static_cast<bool*>(py_pred.request().ptr);
-            for (size_t i = 0; i < res.pred.size(); ++i) {
-                py_pred_ptr[i] = (res.pred[i] != 0);
-            }
+            auto res_owner = std::make_shared<FitResult>(std::move(res));
+            auto capsule = py::capsule(
+                new std::shared_ptr<FitResult>(res_owner),
+                [](void* p) { delete static_cast<std::shared_ptr<FitResult>*>(p); }
+            );
 
-            return py::make_tuple(res.disjunction, py_nodes, py_pol, py_pred);
+            auto py_nodes = py::array_t<int64_t>(
+                {static_cast<py::ssize_t>(res_owner->nodes.size())},
+                {static_cast<py::ssize_t>(sizeof(int64_t))},
+                res_owner->nodes.data(),
+                capsule
+            );
+            auto py_pol = py::array_t<uint8_t>(
+                {static_cast<py::ssize_t>(res_owner->polarities.size())},
+                {static_cast<py::ssize_t>(sizeof(uint8_t))},
+                res_owner->polarities.data(),
+                capsule
+            );
+            auto py_pred = py::array_t<uint8_t>(
+                {static_cast<py::ssize_t>(res_owner->pred.size())},
+                {static_cast<py::ssize_t>(sizeof(uint8_t))},
+                res_owner->pred.data(),
+                capsule
+            );
+
+            return py::make_tuple(res_owner->disjunction, py_nodes, py_pol, py_pred);
         },
         "Fit the SCM and return (disjunction, nodes, polarities, pred)."
     );

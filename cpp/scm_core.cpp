@@ -125,7 +125,7 @@ FitResult fit_impl(
     const uint64_t* node_stop,
     size_t n_nodes,
     const uint16_t* kmer_assembly_idx,
-    const bool* is_target,
+    const uint8_t* is_target,
     size_t n_assemblies,
     int max_rules,
     double p,
@@ -133,20 +133,21 @@ FitResult fit_impl(
 ) {
     // Prepare label array y (uint8 0/1)
     std::vector<uint8_t> y(n_assemblies);
+    int n_remaining_pos = 0;
     if (disjunction) {
         for (size_t i = 0; i < n_assemblies; ++i) {
-            y[i] = static_cast<uint8_t>(1 - static_cast<int>(is_target[i]));
+            y[i] = static_cast<uint8_t>(1 - is_target[i]);
+            n_remaining_pos += y[i];
         }
     } else {
         for (size_t i = 0; i < n_assemblies; ++i) {
-            y[i] = static_cast<uint8_t>(is_target[i] ? 1 : 0);
+            y[i] = static_cast<uint8_t>(is_target[i]);
+            n_remaining_pos += y[i];
         }
     }
     // Initialize remaining mask and seen_stamp
     std::vector<uint8_t> remaining(n_assemblies, 1);
     std::vector<int> seen_stamp(n_assemblies, 0);
-    int n_remaining_pos = 0;
-    for (auto v : y) n_remaining_pos += v;
     int n_remaining_neg = static_cast<int>(n_assemblies) - n_remaining_pos;
 
     // Store rules
