@@ -1,4 +1,4 @@
-#include "scm_core.hpp"
+#include "solver.hpp"
 #include <limits>
 
 static const uint8_t PRESENCE = 0;
