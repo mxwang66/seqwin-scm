@@ -26,13 +26,17 @@ PYBIND11_MODULE(_core, m) {
             size_t n_nodes = ns_buf.shape[0];
             size_t n_assemblies = it_buf.shape[0];
 
-            // Call C++ core
-            FitResult res = fit_impl(
-                ns_ptr, no_ptr, n_nodes,
-                km_ptr,
-                it_ptr, n_assemblies,
-                max_rules, p, disjunction
-            );
+            // Release the Python GIL while running the CPU-bound C++ core.
+            FitResult res;
+            {
+                py::gil_scoped_release release;
+                res = fit_impl(
+                    ns_ptr, no_ptr, n_nodes,
+                    km_ptr,
+                    it_ptr, n_assemblies,
+                    max_rules, p, disjunction
+                );
+            }
 
             // Convert results to NumPy arrays
             py::array_t<long long> py_nodes(res.nodes.size());
