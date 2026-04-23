@@ -1,4 +1,4 @@
-# seqwin_scm
+# scm
 
 This package provides a Set-Covering Machine (SCM) implementation optimized in C++ with a Python interface (via pybind11).  It replaces the original NumPy/Numba code with a single-threaded C++ core. 
 
@@ -14,7 +14,7 @@ pip install .
 
 ```python
 import numpy as np
-from seqwin_scm import SCMModel, fit
+from scm import SCMModel, fit
 
 # Example data (dummy)
 node_start = np.array([0, 1], dtype=np.uint64)

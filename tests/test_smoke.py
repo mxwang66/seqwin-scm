@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from seqwin_scm import SCMModel, fit
+from scm import SCMModel, fit
 
 def test_smoke():
     # Simple example with 2 assemblies and 1 node

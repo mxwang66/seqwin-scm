@@ -1,6 +1,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
-#include "seqwin_scm_core.hpp"
+#include "scm_core.hpp"
 
 namespace py = pybind11;
 
