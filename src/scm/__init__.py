@@ -3,7 +3,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 # Import the compiled extension (built by pybind11)
-from ._core import _fit_impl
+from ._core import fit_native
 
 @dataclass(frozen=True, slots=True)
 class SCMModel:
@@ -24,7 +24,7 @@ def fit(
     """
     Fit the SCM model. Inputs must be 1D NumPy arrays (C-contiguous) of the correct dtype.
     """
-    dis, nodes, pol, pred = _fit_impl(
+    dis, nodes, pol, pred = fit_native(
         node_start, node_stop, kmer_assembly_idx, is_target,
         max_rules, p, disjunction
     )
