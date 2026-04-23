@@ -8,7 +8,7 @@ namespace py = pybind11;
 PYBIND11_MODULE(_core, m) {
     m.doc() = "Core SCM implementation (C++ via pybind11)";
 
-    m.def("fit_native",
+    m.def("_fit_native",
         [](py::array_t<uint64_t> nodes_start,
            py::array_t<uint64_t> nodes_stop,
            py::array_t<uint16_t> kmers_assembly_idx,

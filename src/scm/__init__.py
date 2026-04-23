@@ -25,7 +25,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 
-from ._core import fit_native
+from ._core import _fit_native
 
 @dataclass(frozen=True, slots=True)
 class SCMModel:
@@ -69,7 +69,7 @@ def fit(
         SCMModel: Immutable model object containing selected rule nodes,
         polarities, and per-assembly predictions. 
     """
-    dis, nodes, pol, pred = fit_native(
+    dis, nodes, pol, pred = _fit_native(
         nodes_start, nodes_stop, kmers_assembly_idx, is_target,
         max_rules, p, disjunction
     )
