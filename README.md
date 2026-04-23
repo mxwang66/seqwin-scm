@@ -20,7 +20,7 @@ from scm import SCMModel, fit
 node_start = np.array([0, 1], dtype=np.uint64)
 node_stop = np.array([1, 2], dtype=np.uint64)
 kmer_assembly_idx = np.array([0, 1], dtype=np.uint16)
-is_target = np.array([True, False], dtype=np.bool_)
+is_target = np.array([1, 0], dtype=np.uint8)
 
 model = fit(node_start, node_stop, kmer_assembly_idx, is_target, max_rules=10, p=1.0, disjunction=True)
 print(model)

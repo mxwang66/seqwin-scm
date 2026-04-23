@@ -9,14 +9,14 @@ from ._core import fit_native
 class SCMModel:
     disjunction: bool
     nodes: NDArray[np.int64]
-    polarities: NDArray[np.bool_]
-    pred: NDArray[np.bool_]
+    polarities: NDArray[np.uint8]
+    pred: NDArray[np.uint8]
 
 def fit(
     node_start: NDArray[np.uint64],
     node_stop: NDArray[np.uint64],
     kmer_assembly_idx: NDArray[np.uint16],
-    is_target: NDArray[np.bool_],
+    is_target: NDArray[np.uint8],
     max_rules: int,
     p: float = 1.0,
     disjunction: bool = True

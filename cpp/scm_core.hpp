@@ -17,7 +17,7 @@ FitResult fit_impl(
     const uint64_t* node_stop,
     size_t n_nodes,
     const uint16_t* kmer_assembly_idx,
-    const bool* is_target,
+    const uint8_t* is_target,
     size_t n_assemblies,
     int max_rules,
     double p,

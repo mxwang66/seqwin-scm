@@ -1,8 +1,8 @@
 #include "scm_core.hpp"
 #include <limits>
 
-static const bool PRESENCE = true;
-static const bool ABSENCE = false;
+static const uint8_t PRESENCE = 0;
+static const uint8_t ABSENCE = 1;
 
 void find_best_rule(
     const uint64_t* node_start,
@@ -15,7 +15,7 @@ void find_best_rule(
     int n_remaining_neg,
     double p,
     int& out_node_idx,
-    bool& out_polarity,
+    uint8_t& out_polarity,
     int& out_n_removed_pos,
     int& out_n_removed_neg
 ) {
@@ -75,7 +75,7 @@ void find_best_rule(
 
 void apply_best_rule(
     int node_idx,
-    bool polarity,
+    uint8_t polarity,
     const uint64_t* node_start,
     const uint64_t* node_stop,
     const uint16_t* kmer_assembly_idx,
@@ -125,7 +125,7 @@ FitResult fit_impl(
     const uint64_t* node_stop,
     size_t n_nodes,
     const uint16_t* kmer_assembly_idx,
-    const bool* is_target,
+    const uint8_t* is_target,
     size_t n_assemblies,
     int max_rules,
     double p,
@@ -133,20 +133,21 @@ FitResult fit_impl(
 ) {
     // Prepare label array y (uint8 0/1)
     std::vector<uint8_t> y(n_assemblies);
+    int n_remaining_pos = 0;
     if (disjunction) {
         for (size_t i = 0; i < n_assemblies; ++i) {
-            y[i] = static_cast<uint8_t>(1 - static_cast<int>(is_target[i]));
+            y[i] = static_cast<uint8_t>(1 - is_target[i]);
+            n_remaining_pos += y[i];
         }
     } else {
         for (size_t i = 0; i < n_assemblies; ++i) {
-            y[i] = static_cast<uint8_t>(is_target[i] ? 1 : 0);
+            y[i] = static_cast<uint8_t>(is_target[i]);
+            n_remaining_pos += y[i];
         }
     }
     // Initialize remaining mask and seen_stamp
     std::vector<uint8_t> remaining(n_assemblies, 1);
     std::vector<int> seen_stamp(n_assemblies, 0);
-    int n_remaining_pos = 0;
-    for (auto v : y) n_remaining_pos += v;
     int n_remaining_neg = static_cast<int>(n_assemblies) - n_remaining_pos;
 
     // Store rules
@@ -158,7 +159,7 @@ FitResult fit_impl(
     int stamp = 1;
     while (n_remaining_neg > 0 && (int)rule_nodes.size() < max_rules) {
         int node_idx;
-        bool polarity;
+        uint8_t polarity;
         int n_removed_pos, n_removed_neg;
         find_best_rule(node_start, node_stop, n_nodes,
                        kmer_assembly_idx, y.data(), remaining.data(),
@@ -169,7 +170,7 @@ FitResult fit_impl(
                         seen_stamp.data(), stamp, static_cast<int>(n_assemblies));
 
         rule_nodes.push_back(node_idx);
-        rule_polarities.push_back(polarity ? 1 : 0);
+        rule_polarities.push_back(polarity);
         n_remaining_pos -= n_removed_pos;
         n_remaining_neg -= n_removed_neg;
         stamp += 1;
