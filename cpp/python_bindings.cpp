@@ -1,7 +1,7 @@
 #include <memory>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
-#include "scm_core.hpp"
+#include "solver.hpp"
 
 namespace py = pybind11;
 
@@ -9,16 +9,16 @@ PYBIND11_MODULE(_core, m) {
     m.doc() = "Core SCM implementation (C++ via pybind11)";
 
     m.def("fit_native",
-        [](py::array_t<uint64_t> node_start,
-           py::array_t<uint64_t> node_stop,
-           py::array_t<uint16_t> kmer_assembly_idx,
+        [](py::array_t<uint64_t> nodes_start,
+           py::array_t<uint64_t> nodes_stop,
+           py::array_t<uint16_t> kmers_assembly_idx,
            py::array_t<uint8_t> is_target,
            int max_rules, double p, bool disjunction
         ) {
             // Extract raw pointers and sizes
-            auto ns_buf = node_start.request();
-            auto no_buf = node_stop.request();
-            auto km_buf = kmer_assembly_idx.request();
+            auto ns_buf = nodes_start.request();
+            auto no_buf = nodes_stop.request();
+            auto km_buf = kmers_assembly_idx.request();
             auto it_buf = is_target.request();
             const uint64_t* ns_ptr = static_cast<uint64_t*>(ns_buf.ptr);
             const uint64_t* no_ptr = static_cast<uint64_t*>(no_buf.ptr);

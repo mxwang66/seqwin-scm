@@ -7,7 +7,7 @@ This package provides a Set-Covering Machine (SCM) implementation optimized in C
 Install via pip (requires a C++ compiler and CMake):
 
 ```bash
-pip install .
+pip install --no-build-isolation .
 ```
 
 ## Usage
@@ -17,12 +17,12 @@ import numpy as np
 from scm import SCMModel, fit
 
 # Example data (dummy)
-node_start = np.array([0, 1], dtype=np.uint64)
-node_stop = np.array([1, 2], dtype=np.uint64)
-kmer_assembly_idx = np.array([0, 1], dtype=np.uint16)
+nodes_start = np.array([0, 1], dtype=np.uint64)
+nodes_stop = np.array([1, 2], dtype=np.uint64)
+kmers_assembly_idx = np.array([0, 1], dtype=np.uint16)
 is_target = np.array([1, 0], dtype=np.uint8)
 
-model = fit(node_start, node_stop, kmer_assembly_idx, is_target, max_rules=10, p=1.0, disjunction=True)
+model = fit(nodes_start, nodes_stop, kmers_assembly_idx, is_target, max_rules=10, p=1.0, disjunction=True)
 print(model)
 ```
 

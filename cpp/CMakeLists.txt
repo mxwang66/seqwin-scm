@@ -11,7 +11,7 @@ find_package(pybind11 CONFIG REQUIRED)
 
 pybind11_add_module(_core
     python_bindings.cpp
-    scm_core.cpp
+    solver.cpp
 )
 
 target_include_directories(_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

@@ -4,13 +4,13 @@ from scm import SCMModel, fit
 
 def test_smoke():
     # Simple example with 2 assemblies and 1 node
-    node_start = np.array([0], dtype=np.uint64)
-    node_stop = np.array([2], dtype=np.uint64)
+    nodes_start = np.array([0], dtype=np.uint64)
+    nodes_stop = np.array([2], dtype=np.uint64)
     # Two kmers both in assembly 0 and 1
-    kmer_assembly_idx = np.array([0, 1], dtype=np.uint16)
+    kmers_assembly_idx = np.array([0, 1], dtype=np.uint16)
     is_target = np.array([1, 0], dtype=np.uint8)
 
-    model = fit(node_start, node_stop, kmer_assembly_idx, is_target, max_rules=5, p=1.0, disjunction=True)
+    model = fit(nodes_start, nodes_stop, kmers_assembly_idx, is_target, max_rules=5, p=1.0, disjunction=True)
     
     # Check return type and structure
     assert isinstance(model, SCMModel)

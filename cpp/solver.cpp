@@ -1,14 +1,14 @@
-#include "scm_core.hpp"
+#include "solver.hpp"
 #include <limits>
 
 static const uint8_t PRESENCE = 0;
 static const uint8_t ABSENCE = 1;
 
 void find_best_rule(
-    const uint64_t* node_start,
-    const uint64_t* node_stop,
+    const uint64_t* nodes_start,
+    const uint64_t* nodes_stop,
     size_t n_nodes,
-    const uint16_t* kmer_assembly_idx,
+    const uint16_t* kmers_assembly_idx,
     const uint8_t* y,
     const uint8_t* remaining,
     int n_remaining_pos,
@@ -27,14 +27,14 @@ void find_best_rule(
     out_n_removed_neg = 0;
 
     for (size_t node_idx = 0; node_idx < n_nodes; ++node_idx) {
-        uint64_t start = node_start[node_idx];
-        uint64_t stop  = node_stop[node_idx];
+        uint64_t start = nodes_start[node_idx];
+        uint64_t stop  = nodes_stop[node_idx];
         int n_present_pos = 0;
         int n_present_neg = 0;
         int prev_asm = -1;
         // Count unique assemblies in this node slice
         for (uint64_t i = start; i < stop; ++i) {
-            int asm_i = static_cast<int>(kmer_assembly_idx[i]);
+            int asm_i = static_cast<int>(kmers_assembly_idx[i]);
             if (asm_i != prev_asm) {
                 prev_asm = asm_i;
                 if (remaining[asm_i]) {
@@ -76,22 +76,22 @@ void find_best_rule(
 void apply_best_rule(
     int node_idx,
     uint8_t polarity,
-    const uint64_t* node_start,
-    const uint64_t* node_stop,
-    const uint16_t* kmer_assembly_idx,
+    const uint64_t* nodes_start,
+    const uint64_t* nodes_stop,
+    const uint16_t* kmers_assembly_idx,
     uint8_t* remaining,
     int* seen_stamp,
     int stamp,
     int n_assemblies
 ) {
-    uint64_t start = node_start[node_idx];
-    uint64_t stop  = node_stop[node_idx];
+    uint64_t start = nodes_start[node_idx];
+    uint64_t stop  = nodes_stop[node_idx];
 
     if (polarity == PRESENCE) {
         // Mark assemblies seen in this node slice
         int prev_asm = -1;
         for (uint64_t i = start; i < stop; ++i) {
-            int asm_i = static_cast<int>(kmer_assembly_idx[i]);
+            int asm_i = static_cast<int>(kmers_assembly_idx[i]);
             if (asm_i != prev_asm) {
                 prev_asm = asm_i;
                 if (remaining[asm_i]) {
@@ -109,7 +109,7 @@ void apply_best_rule(
         // ABSENCE: remove those seen in this node slice
         int prev_asm = -1;
         for (uint64_t i = start; i < stop; ++i) {
-            int asm_i = static_cast<int>(kmer_assembly_idx[i]);
+            int asm_i = static_cast<int>(kmers_assembly_idx[i]);
             if (asm_i != prev_asm) {
                 prev_asm = asm_i;
                 if (remaining[asm_i]) {
@@ -121,10 +121,10 @@ void apply_best_rule(
 }
 
 FitResult fit_impl(
-    const uint64_t* node_start,
-    const uint64_t* node_stop,
+    const uint64_t* nodes_start,
+    const uint64_t* nodes_stop,
     size_t n_nodes,
-    const uint16_t* kmer_assembly_idx,
+    const uint16_t* kmers_assembly_idx,
     const uint8_t* is_target,
     size_t n_assemblies,
     int max_rules,
@@ -161,12 +161,12 @@ FitResult fit_impl(
         int node_idx;
         uint8_t polarity;
         int n_removed_pos, n_removed_neg;
-        find_best_rule(node_start, node_stop, n_nodes,
-                       kmer_assembly_idx, y.data(), remaining.data(),
+        find_best_rule(nodes_start, nodes_stop, n_nodes,
+                       kmers_assembly_idx, y.data(), remaining.data(),
                        n_remaining_pos, n_remaining_neg, p,
                        node_idx, polarity, n_removed_pos, n_removed_neg);
-        apply_best_rule(node_idx, polarity, node_start, node_stop,
-                        kmer_assembly_idx, remaining.data(),
+        apply_best_rule(node_idx, polarity, nodes_start, nodes_stop,
+                        kmers_assembly_idx, remaining.data(),
                         seen_stamp.data(), stamp, static_cast<int>(n_assemblies));
 
         rule_nodes.push_back(node_idx);
