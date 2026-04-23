@@ -1,7 +1,20 @@
-"""Set Covering Machine (SCM) model fitting.
+"""
+SCM
+===
 
-This module exposes a lightweight Python API backed by a C++ implementation
-(`scm._core`). It is designed to fit SCM models on Seqwin-derived arrays.
+Set Covering Machine (SCM) model fitting. It is designed to fit SCM models on Seqwin-derived arrays. 
+
+Dependencies:
+-------------
+- numpy
+
+Classes:
+----------
+- SCMModel
+
+Functions:
+----------
+- fit
 """
 
 __author__ = 'Michael X. Wang'
@@ -19,13 +32,10 @@ class SCMModel:
     """Fitted Set Covering Machine model.
 
     Attributes:
-        disjunction (bool): ``True`` for a disjunction model, ``False`` for a
-            conjunction model.
-        nodes (NDArray[np.int64]): Indices of selected nodes (one per rule).
-        polarities (NDArray[np.uint8]): Rule polarity per selected node:
-            ``0`` for presence, ``1`` for absence.
-        pred (NDArray[np.uint8]): Final per-assembly predictions as ``0``/``1``
-            labels (non-target/target).
+        disjunction (bool): `True` for a disjunction model, `False` for a conjunction model. 
+        nodes (NDArray[np.int64]): Indices of selected nodes (one per rule). 
+        polarities (NDArray[np.uint8]): Rule polarity per selected node: `0` for presence, `1` for absence. 
+        pred (NDArray[np.uint8]): Final per-assembly predictions as `0`/`1` labels (non-target/target). 
     """
     disjunction: bool
     nodes: NDArray[np.int64]
@@ -41,29 +51,23 @@ def fit(
     p: float = 1.0, 
     disjunction: bool = True
 ) -> SCMModel:
-    """Fit a Set Covering Machine model.
+    """Fit a Set Covering Machine model. 
 
     The input arrays are expected to come from Seqwin structures and use
-    exact dtypes for direct transfer to the C++ backend.
+    exact dtypes for direct transfer to the C++ backend. 
 
     Args:
-        nodes_start (NDArray[np.uint64]): Start offsets for each node in the
-            k-mer index array (typically ``nodes['start']``).
-        nodes_stop (NDArray[np.uint64]): Stop offsets for each node in the
-            k-mer index array (typically ``nodes['stop']``).
-        kmers_assembly_idx (NDArray[np.uint16]): Assembly index for each k-mer
-            occurrence (typically ``kmers['assembly_idx']``).
-        is_target (NDArray[np.uint8]): Binary target labels per assembly, where
-            ``1`` denotes target and ``0`` denotes non-target.
-        max_rules (int): Maximum number of rules to include in the fitted model.
-        p (float, optional): Utility penalty for removed positive examples.
-            Values are typically ``>= 1.0``. Defaults to ``1.0``.
-        disjunction (bool, optional): If ``True``, fit a disjunction; if
-            ``False``, fit a conjunction. Defaults to ``True``.
+        nodes_start (NDArray[np.uint64]): C-contiguous copy of `nodes['start']`. 
+        nodes_stop (NDArray[np.uint64]): C-contiguous copy of `nodes['stop']`. 
+        kmers_assembly_idx (NDArray[np.uint16]): C-contiguous copy of `kmers['assembly_idx']`. 
+        is_target (NDArray[np.uint8]): `np.uint8` array converted from `assemblies['is_target']`. 
+        max_rules (int): Maximum number of rules to include in the fitted model. 
+        p (float, optional): Utility penalty for removed positive examples (typically >= 1.0). [1.0]
+        disjunction (bool, optional): If `True`, fit a disjunction; if `False`, fit a conjunction. [True]
 
     Returns:
         SCMModel: Immutable model object containing selected rule nodes,
-        polarities, and per-assembly predictions.
+        polarities, and per-assembly predictions. 
     """
     dis, nodes, pol, pred = fit_native(
         nodes_start, nodes_stop, kmers_assembly_idx, is_target,
