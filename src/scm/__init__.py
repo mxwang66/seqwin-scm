@@ -43,9 +43,9 @@ class SCMModel:
     pred: NDArray[np.uint8]
 
 def fit(
-    node_start: NDArray[np.uint64], 
-    node_stop: NDArray[np.uint64], 
-    kmer_assembly_idx: NDArray[np.uint16], 
+    nodes_start: NDArray[np.uint64], 
+    nodes_stop: NDArray[np.uint64], 
+    kmers_assembly_idx: NDArray[np.uint16], 
     is_target: NDArray[np.uint8], 
     max_rules: int, 
     p: float = 1.0, 
@@ -54,9 +54,9 @@ def fit(
     """Fit the SCM model. Rules are labeled with node indices
 
     Args:
-        node_start (NDArray[np.uint64]): C-contiguous copy of `nodes['start']`. 
-        node_stop (NDArray[np.uint64]): C-contiguous copy of `nodes['stop']`. 
-        kmer_assembly_idx (NDArray[np.uint16]): C-contiguous copy of `kmers['assembly_idx']`. 
+        nodes_start (NDArray[np.uint64]): C-contiguous copy of `nodes['start']`. 
+        nodes_stop (NDArray[np.uint64]): C-contiguous copy of `nodes['stop']`. 
+        kmers_assembly_idx (NDArray[np.uint16]): C-contiguous copy of `kmers['assembly_idx']`. 
         is_target (NDArray[np.uint8]): `np.uint8` array converted from `assemblies['is_target']`. 
         max_rules (int): Maximum number of rules for the SCM model. 
         p (float, optional): SCM hyperparameter (penalty for the utility function). Should be no less than 1. [1.0]
@@ -66,7 +66,7 @@ def fit(
         SCMModel: The SCM model. Only works for the provided Seqwin data. 
     """
     dis, nodes, pol, pred = fit_native(
-        node_start, node_stop, kmer_assembly_idx, is_target,
+        nodes_start, nodes_stop, kmers_assembly_idx, is_target,
         max_rules, p, disjunction
     )
     return SCMModel(disjunction=dis, nodes=nodes, polarities=pol, pred=pred)

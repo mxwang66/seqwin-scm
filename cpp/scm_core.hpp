@@ -10,13 +10,13 @@ struct FitResult {
     std::vector<uint8_t> pred;       // 0 or 1 (final remaining mask)
 };
 
-/// Perform fitting. The arrays node_start, node_stop have length n_nodes,
+/// Perform fitting. The arrays nodes_start, nodes_stop have length n_nodes,
 /// and is_target has length n_assemblies. Dtypes must match exactly.
 FitResult fit_impl(
-    const uint64_t* node_start,
-    const uint64_t* node_stop,
+    const uint64_t* nodes_start,
+    const uint64_t* nodes_stop,
     size_t n_nodes,
-    const uint16_t* kmer_assembly_idx,
+    const uint16_t* kmers_assembly_idx,
     const uint8_t* is_target,
     size_t n_assemblies,
     int max_rules,
