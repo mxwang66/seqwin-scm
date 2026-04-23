@@ -10,11 +10,11 @@ find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pybind11 CONFIG REQUIRED)
 
 pybind11_add_module(_core
-    cpp/bindings.cpp
-    cpp/seqwin_scm_core.cpp
+    python_bindings.cpp
+    scm_core.cpp
 )
 
-target_include_directories(_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/cpp)
+target_include_directories(_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 install(TARGETS _core
     LIBRARY DESTINATION ${SKBUILD_PROJECT_NAME}

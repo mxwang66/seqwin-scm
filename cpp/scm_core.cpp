@@ -1,4 +1,4 @@
-#include "seqwin_scm_core.hpp"
+#include "scm_core.hpp"
 #include <limits>
 
 static const bool PRESENCE = true;

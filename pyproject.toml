@@ -3,7 +3,7 @@ requires = ["scikit-build-core>=0.11", "pybind11>=3.0", "numpy"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "seqwin_scm"
+name = "scm"
 version = "0.1.0"
 description = "Seqwin SCM algorithm ported to C++ with pybind11"
 readme = "README.md"
@@ -16,3 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
 ]
+
+
+[tool.scikit-build]
+cmake.source-dir = "cpp"
