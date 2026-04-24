@@ -27,7 +27,6 @@ PYBIND11_MODULE(_core, m) {
             size_t n_nodes = ns_buf.shape[0];
             size_t n_assemblies = it_buf.shape[0];
 
-            // Release the Python GIL while running the CPU-bound C++ core.
             FitResult res;
             {
                 py::gil_scoped_release release;
@@ -38,7 +37,6 @@ PYBIND11_MODULE(_core, m) {
                     max_rules, p, disjunction
                 );
             }
-
             auto res_owner = std::make_shared<FitResult>(std::move(res));
             auto capsule = py::capsule(
                 new std::shared_ptr<FitResult>(res_owner),
@@ -66,6 +64,12 @@ PYBIND11_MODULE(_core, m) {
 
             return py::make_tuple(res_owner->disjunction, py_nodes, py_pol, py_pred);
         },
-        "Fit the SCM and return (disjunction, nodes, polarities, pred)."
+        py::arg("nodes_start"),
+        py::arg("nodes_stop"),
+        py::arg("kmers_assembly_idx"),
+        py::arg("is_target"),
+        py::arg("max_rules"),
+        py::arg("p"),
+        py::arg("disjunction")
     );
 }
