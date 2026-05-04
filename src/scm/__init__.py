@@ -49,7 +49,9 @@ def fit(
     is_target: NDArray[np.uint8], 
     max_rules: int, 
     p: float = 1.0, 
-    disjunction: bool = True
+    disjunction: bool = True,
+    beam_width: int = 1,
+    branch_width: int = 1,
 ) -> SCMModel:
     """Fit a Set Covering Machine model. 
 
@@ -64,6 +66,8 @@ def fit(
         max_rules (int): Maximum number of rules to include in the fitted model. 
         p (float, optional): Utility penalty for removed positive examples (typically >= 1.0). [1.0]
         disjunction (bool, optional): If `True`, fit a disjunction; if `False`, fit a conjunction. [True]
+        beam_width (int, optional): Number of retained partial models per depth. [1]
+        branch_width (int, optional): Number of candidate rules expanded per state. [1]
 
     Returns:
         SCMModel: Immutable model object containing selected rule nodes,
@@ -71,6 +75,6 @@ def fit(
     """
     dis, nodes, pol, pred = _fit_native(
         nodes_start, nodes_stop, kmers_assembly_idx, is_target,
-        max_rules, p, disjunction
+        max_rules, p, disjunction, beam_width, branch_width
     )
     return SCMModel(disjunction=dis, nodes=nodes, polarities=pol, pred=pred)
