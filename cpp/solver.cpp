@@ -32,10 +32,6 @@ static bool is_better_candidate(const RuleCandidate& a, const RuleCandidate& b) 
     return a.scan_order < b.scan_order;
 }
 
-static bool is_worse_candidate(const RuleCandidate& a, const RuleCandidate& b) {
-    return is_better_candidate(b, a);
-}
-
 std::vector<RuleCandidate> find_top_rules(
     const uint64_t* nodes_start,
     const uint64_t* nodes_stop,
@@ -48,6 +44,7 @@ std::vector<RuleCandidate> find_top_rules(
     double p,
     int branch_width
 ) {
+    // Keep only the top branch_width candidates while scanning all rules.
     struct WorseFirst {
         bool operator()(const RuleCandidate& a, const RuleCandidate& b) const {
             return is_better_candidate(a, b);
@@ -132,6 +129,7 @@ void apply_rule(
     uint64_t stop = nodes_stop[node_idx];
 
     if (polarity == PRESENCE) {
+        // Mark assemblies seen in this node slice.
         int prev_asm = -1;
         for (uint64_t i = start; i < stop; ++i) {
             int asm_i = static_cast<int>(kmers_assembly_idx[i]);
@@ -142,12 +140,14 @@ void apply_rule(
                 }
             }
         }
+        // Remove those not seen.
         for (int asm_i = 0; asm_i < n_assemblies; ++asm_i) {
             if (remaining[asm_i] && seen_stamp[asm_i] != stamp) {
                 remaining[asm_i] = 0;
             }
         }
     } else {
+        // ABSENCE: remove those seen in this node slice.
         int prev_asm = -1;
         for (uint64_t i = start; i < stop; ++i) {
             int asm_i = static_cast<int>(kmers_assembly_idx[i]);
@@ -213,10 +213,12 @@ FitResult fit_impl(
     std::vector<int> seen_stamp(n_assemblies, 0);
     int stamp = 1;
 
+    // Expand beam level by level up to max_rules.
     for (int depth = 0; depth < max_rules; ++depth) {
         std::vector<SearchState> children;
         for (const auto& state : beam) {
             if (state.n_remaining_neg == 0) {
+                // Terminal state for this transformed objective; skip expansion.
                 continue;
             }
 
@@ -227,6 +229,7 @@ FitResult fit_impl(
             );
 
             for (const auto& cand : top_rules) {
+                // Create one child per retained candidate rule.
                 SearchState child = state;
                 child.rule_nodes.push_back(cand.node_idx);
                 child.rule_polarities.push_back(cand.polarity);
@@ -248,6 +251,7 @@ FitResult fit_impl(
                 child.risk = p * static_cast<double>(removed_positive_total) + static_cast<double>(child.n_remaining_neg);
                 child.cumulative_utility = state.cumulative_utility + cand.utility;
 
+                // Track the best risk state seen at any depth.
                 if (better_state(child, best_state_seen, n_initial_pos)) {
                     best_state_seen = child;
                 }
@@ -256,9 +260,11 @@ FitResult fit_impl(
         }
 
         if (children.empty()) {
+            // All beam states were terminal (or produced no expansions).
             break;
         }
 
+        // Keep the best beam_width children for the next depth.
         std::stable_sort(children.begin(), children.end(),
             [n_initial_pos](const SearchState& a, const SearchState& b) {
                 return better_state(a, b, n_initial_pos);
