@@ -21,5 +21,7 @@ FitResult fit_impl(
     size_t n_assemblies,
     int max_rules,
     double p,
-    bool disjunction
+    bool disjunction,
+    int beam_width,
+    int branch_width
 );

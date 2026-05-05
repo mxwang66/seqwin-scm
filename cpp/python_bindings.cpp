@@ -13,7 +13,7 @@ PYBIND11_MODULE(_core, m) {
            py::array_t<uint64_t> nodes_stop,
            py::array_t<uint16_t> kmers_assembly_idx,
            py::array_t<uint8_t> is_target,
-           int max_rules, double p, bool disjunction
+           int max_rules, double p, bool disjunction, int beam_width, int branch_width
         ) {
             // Extract raw pointers and sizes
             auto ns_buf = nodes_start.request();
@@ -34,7 +34,7 @@ PYBIND11_MODULE(_core, m) {
                     ns_ptr, no_ptr, n_nodes,
                     km_ptr,
                     it_ptr, n_assemblies,
-                    max_rules, p, disjunction
+                    max_rules, p, disjunction, beam_width, branch_width
                 );
             }
             auto res_owner = std::make_shared<FitResult>(std::move(res));
@@ -70,6 +70,8 @@ PYBIND11_MODULE(_core, m) {
         py::arg("is_target"),
         py::arg("max_rules"),
         py::arg("p"),
-        py::arg("disjunction")
+        py::arg("disjunction"),
+        py::arg("beam_width") = 1,
+        py::arg("branch_width") = 1
     );
 }
