@@ -1,12 +1,13 @@
-#include "solver.hpp"
 #include <algorithm>
 #include <limits>
 #include <queue>
 
+#include "solver.hpp"
+
 static const uint8_t PRESENCE = 0;
 static const uint8_t ABSENCE = 1;
 
-struct RuleCandidate {
+struct Rule {
     int node_idx;
     uint8_t polarity;
     int n_removed_pos;
@@ -26,13 +27,13 @@ struct SearchState {
     double cumulative_utility;
 };
 
-static bool is_better_candidate(const RuleCandidate& a, const RuleCandidate& b) {
+static bool is_better_rule(const Rule& a, const Rule& b) {
     if (a.utility != b.utility) return a.utility > b.utility;
     if (a.net_gain != b.net_gain) return a.net_gain > b.net_gain;
     return a.scan_order < b.scan_order;
 }
 
-std::vector<RuleCandidate> find_top_rules(
+std::vector<Rule> find_top_rules(
     const uint64_t* nodes_start,
     const uint64_t* nodes_stop,
     size_t n_nodes,
@@ -44,14 +45,14 @@ std::vector<RuleCandidate> find_top_rules(
     double p,
     int branch_width
 ) {
-    // Keep only the top branch_width candidates while scanning all rules.
+    // Keep only the top branch_width candidates while scanning all rules
     struct WorseFirst {
-        bool operator()(const RuleCandidate& a, const RuleCandidate& b) const {
-            return is_better_candidate(a, b);
+        bool operator()(const Rule& a, const Rule& b) const {
+            return is_better_rule(a, b);
         }
     };
 
-    std::priority_queue<RuleCandidate, std::vector<RuleCandidate>, WorseFirst> heap;
+    std::priority_queue<Rule, std::vector<Rule>, WorseFirst> heap;
 
     for (size_t node_idx = 0; node_idx < n_nodes; ++node_idx) {
         uint64_t start = nodes_start[node_idx];
@@ -71,7 +72,7 @@ std::vector<RuleCandidate> find_top_rules(
             }
         }
 
-        RuleCandidate presence;
+        Rule presence;
         presence.node_idx = static_cast<int>(node_idx);
         presence.polarity = PRESENCE;
         presence.n_removed_pos = n_remaining_pos - n_present_pos;
@@ -82,12 +83,12 @@ std::vector<RuleCandidate> find_top_rules(
 
         if (static_cast<int>(heap.size()) < branch_width) {
             heap.push(presence);
-        } else if (is_better_candidate(presence, heap.top())) {
+        } else if (is_better_rule(presence, heap.top())) {
             heap.pop();
             heap.push(presence);
         }
 
-        RuleCandidate absence;
+        Rule absence;
         absence.node_idx = static_cast<int>(node_idx);
         absence.polarity = ABSENCE;
         absence.n_removed_pos = n_present_pos;
@@ -98,19 +99,19 @@ std::vector<RuleCandidate> find_top_rules(
 
         if (static_cast<int>(heap.size()) < branch_width) {
             heap.push(absence);
-        } else if (is_better_candidate(absence, heap.top())) {
+        } else if (is_better_rule(absence, heap.top())) {
             heap.pop();
             heap.push(absence);
         }
     }
 
-    std::vector<RuleCandidate> out;
+    std::vector<Rule> out;
     out.reserve(heap.size());
     while (!heap.empty()) {
         out.push_back(heap.top());
         heap.pop();
     }
-    std::stable_sort(out.begin(), out.end(), is_better_candidate);
+    std::stable_sort(out.begin(), out.end(), is_better_rule);
     return out;
 }
 
@@ -129,7 +130,7 @@ void apply_rule(
     uint64_t stop = nodes_stop[node_idx];
 
     if (polarity == PRESENCE) {
-        // Mark assemblies seen in this node slice.
+        // Mark assemblies seen in this node slice
         int prev_asm = -1;
         for (uint64_t i = start; i < stop; ++i) {
             int asm_i = static_cast<int>(kmers_assembly_idx[i]);
@@ -140,14 +141,14 @@ void apply_rule(
                 }
             }
         }
-        // Remove those not seen.
+        // Remove those not seen
         for (int asm_i = 0; asm_i < n_assemblies; ++asm_i) {
             if (remaining[asm_i] && seen_stamp[asm_i] != stamp) {
                 remaining[asm_i] = 0;
             }
         }
     } else {
-        // ABSENCE: remove those seen in this node slice.
+        // ABSENCE: remove those seen in this node slice
         int prev_asm = -1;
         for (uint64_t i = start; i < stop; ++i) {
             int asm_i = static_cast<int>(kmers_assembly_idx[i]);
@@ -213,23 +214,23 @@ FitResult fit_impl(
     std::vector<int> seen_stamp(n_assemblies, 0);
     int stamp = 1;
 
-    // Expand beam level by level up to max_rules.
+    // Expand beam level by level up to max_rules
     for (int depth = 0; depth < max_rules; ++depth) {
         std::vector<SearchState> children;
         for (const auto& state : beam) {
             if (state.n_remaining_neg == 0) {
-                // Terminal state for this transformed objective; skip expansion.
+                // Terminal state for this transformed objective; skip expansion
                 continue;
             }
 
-            std::vector<RuleCandidate> top_rules = find_top_rules(
+            std::vector<Rule> top_rules = find_top_rules(
                 nodes_start, nodes_stop, n_nodes,
                 kmers_assembly_idx, y.data(), state.remaining.data(),
                 state.n_remaining_pos, state.n_remaining_neg, p, branch_width
             );
 
             for (const auto& cand : top_rules) {
-                // Create one child per retained candidate rule.
+                // Create one child per retained candidate rule
                 SearchState child = state;
                 child.rule_nodes.push_back(cand.node_idx);
                 child.rule_polarities.push_back(cand.polarity);
@@ -251,7 +252,7 @@ FitResult fit_impl(
                 child.risk = p * static_cast<double>(removed_positive_total) + static_cast<double>(child.n_remaining_neg);
                 child.cumulative_utility = state.cumulative_utility + cand.utility;
 
-                // Track the best risk state seen at any depth.
+                // Track the best risk state seen at any depth
                 if (better_state(child, best_state_seen, n_initial_pos)) {
                     best_state_seen = child;
                 }
@@ -260,11 +261,11 @@ FitResult fit_impl(
         }
 
         if (children.empty()) {
-            // All beam states were terminal (or produced no expansions).
+            // All beam states were terminal (or produced no expansions)
             break;
         }
 
-        // Keep the best beam_width children for the next depth.
+        // Keep the best beam_width children for the next depth
         std::stable_sort(children.begin(), children.end(),
             [n_initial_pos](const SearchState& a, const SearchState& b) {
                 return better_state(a, b, n_initial_pos);
