@@ -49,8 +49,6 @@ std::vector<Rule> find_top_rules(
     int branch_pool_mult,
     double branch_lambda
 ) {
-    if (branch_pool_mult < 1) branch_pool_mult = 1;
-    if (branch_lambda < 0.0) branch_lambda = 0.0;
     int candidate_pool_size = branch_pool_mult * branch_width;
     if (candidate_pool_size < 1) candidate_pool_size = 1;
 
@@ -194,10 +192,12 @@ std::vector<Rule> find_top_rules(
         double best_score = -std::numeric_limits<double>::infinity();
         for (size_t i = 0; i < out.size(); ++i) {
             if (used[i]) continue;
+            // Branch MMR redundancy: use the largest overlap against any already-selected rule.
             double max_jaccard = 0.0;
             for (const auto& picked : selected) {
                 max_jaccard = std::max(max_jaccard, jaccard_removed(out[i].removed_mask, picked.removed_mask));
             }
+            // Branch MMR objective: relevance (normalized utility) minus redundancy penalty.
             double score = normalized_utility(out[i].utility) - branch_lambda * max_jaccard;
             if (best_idx == -1 || score > best_score ||
                 (score == best_score && is_better_rule(out[i], out[best_idx]))) {
@@ -222,11 +222,6 @@ void apply_rule(
     int stamp,
     int n_assemblies
 ) {
-    if (beam_elite_frac <= 0.0) beam_elite_frac = 1.0 / static_cast<double>(std::max(1, beam_width));
-    if (beam_elite_frac > 1.0) beam_elite_frac = 1.0;
-    if (beam_lambda < 0.0) beam_lambda = 0.0;
-    if (branch_pool_mult < 1) branch_pool_mult = 1;
-    if (branch_lambda < 0.0) branch_lambda = 0.0;
     uint64_t start = nodes_start[node_idx];
     uint64_t stop = nodes_stop[node_idx];
 
@@ -417,10 +412,12 @@ FitResult fit_impl(
                 double best_score = -std::numeric_limits<double>::infinity();
                 for (size_t i = 0; i < children.size(); ++i) {
                     if (used[i]) continue;
+                    // Beam MMR redundancy: use the largest overlap against any already-selected state.
                     double max_jaccard = 0.0;
                     for (const auto& picked : next_beam) {
                         max_jaccard = std::max(max_jaccard, jaccard_remaining(children[i].remaining, picked.remaining));
                     }
+                    // Beam MMR objective: relevance (lower risk -> higher normalized relevance) minus redundancy penalty.
                     double score = normalized_risk_relevance(children[i].risk) - beam_lambda * max_jaccard;
                     if (best_idx == -1 || score > best_score ||
                         (score == best_score && better_state(children[i], children[best_idx], n_initial_pos))) {
