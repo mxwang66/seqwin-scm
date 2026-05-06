@@ -6,10 +6,6 @@
 
 static const uint8_t PRESENCE = 0;
 static const uint8_t ABSENCE = 1;
-static const int CANDIDATE_POOL_MULTIPLIER = 20;
-static const double CANDIDATE_MMR_LAMBDA = 0.30;
-static const double STATE_MMR_LAMBDA = 0.15;
-static const int STATE_ELITE_FRACTION_DENOMINATOR = 4;
 
 struct Rule {
     int node_idx;
@@ -49,9 +45,13 @@ std::vector<Rule> find_top_rules(
     int n_remaining_pos,
     int n_remaining_neg,
     double p,
-    int branch_width
+    int branch_width,
+    int branch_pool_mult,
+    double branch_lambda
 ) {
-    int candidate_pool_size = CANDIDATE_POOL_MULTIPLIER * branch_width;
+    if (branch_pool_mult < 1) branch_pool_mult = 1;
+    if (branch_lambda < 0.0) branch_lambda = 0.0;
+    int candidate_pool_size = branch_pool_mult * branch_width;
     if (candidate_pool_size < 1) candidate_pool_size = 1;
 
     // Stage 1: keep only the top candidate_pool_size candidates while scanning all rules
@@ -158,7 +158,7 @@ std::vector<Rule> find_top_rules(
         }
     }
 
-    // Stage 2b: MMR reranking from retained pool.
+    // Stage 2b (MMR): rank by normalized utility while penalizing overlap in removed assemblies.
     double min_utility = std::numeric_limits<double>::infinity();
     double max_utility = -std::numeric_limits<double>::infinity();
     for (const auto& rule : out) {
@@ -198,7 +198,7 @@ std::vector<Rule> find_top_rules(
             for (const auto& picked : selected) {
                 max_jaccard = std::max(max_jaccard, jaccard_removed(out[i].removed_mask, picked.removed_mask));
             }
-            double score = normalized_utility(out[i].utility) - CANDIDATE_MMR_LAMBDA * max_jaccard;
+            double score = normalized_utility(out[i].utility) - branch_lambda * max_jaccard;
             if (best_idx == -1 || score > best_score ||
                 (score == best_score && is_better_rule(out[i], out[best_idx]))) {
                 best_idx = static_cast<int>(i);
@@ -222,6 +222,11 @@ void apply_rule(
     int stamp,
     int n_assemblies
 ) {
+    if (beam_elite_frac <= 0.0) beam_elite_frac = 1.0 / static_cast<double>(std::max(1, beam_width));
+    if (beam_elite_frac > 1.0) beam_elite_frac = 1.0;
+    if (beam_lambda < 0.0) beam_lambda = 0.0;
+    if (branch_pool_mult < 1) branch_pool_mult = 1;
+    if (branch_lambda < 0.0) branch_lambda = 0.0;
     uint64_t start = nodes_start[node_idx];
     uint64_t stop = nodes_stop[node_idx];
 
@@ -279,7 +284,11 @@ FitResult fit_impl(
     double p,
     bool disjunction,
     int beam_width,
-    int branch_width
+    int branch_width,
+    double beam_elite_frac,
+    double beam_lambda,
+    int branch_pool_mult,
+    double branch_lambda
 ) {
     std::vector<uint8_t> y(n_assemblies);
     int n_initial_pos = 0;
@@ -322,7 +331,7 @@ FitResult fit_impl(
             std::vector<Rule> top_rules = find_top_rules(
                 nodes_start, nodes_stop, n_nodes,
                 kmers_assembly_idx, y.data(), state.remaining.data(), n_assemblies,
-                state.n_remaining_pos, state.n_remaining_neg, p, branch_width
+                state.n_remaining_pos, state.n_remaining_neg, p, branch_width, branch_pool_mult, branch_lambda
             );
 
             for (const auto& cand : top_rules) {
@@ -361,14 +370,14 @@ FitResult fit_impl(
             break;
         }
 
-        // Keep elite, then fill remainder by MMR over remaining mask redundancy.
+        // Beam selection: keep an elite prefix by risk ordering, then MMR to diversify remaining masks.
         std::stable_sort(children.begin(), children.end(),
             [n_initial_pos](const SearchState& a, const SearchState& b) {
                 return better_state(a, b, n_initial_pos);
             }
         );
         if (static_cast<int>(children.size()) > beam_width) {
-            int elite_width = std::max(1, beam_width / STATE_ELITE_FRACTION_DENOMINATOR);
+            int elite_width = std::max(1, static_cast<int>(beam_width * beam_elite_frac));
             elite_width = std::min(elite_width, beam_width);
             std::vector<SearchState> next_beam;
             next_beam.reserve(beam_width);
@@ -412,7 +421,7 @@ FitResult fit_impl(
                     for (const auto& picked : next_beam) {
                         max_jaccard = std::max(max_jaccard, jaccard_remaining(children[i].remaining, picked.remaining));
                     }
-                    double score = normalized_risk_relevance(children[i].risk) - STATE_MMR_LAMBDA * max_jaccard;
+                    double score = normalized_risk_relevance(children[i].risk) - beam_lambda * max_jaccard;
                     if (best_idx == -1 || score > best_score ||
                         (score == best_score && better_state(children[i], children[best_idx], n_initial_pos))) {
                         best_idx = static_cast<int>(i);
