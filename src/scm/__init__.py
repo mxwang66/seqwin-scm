@@ -52,6 +52,10 @@ def fit(
     disjunction: bool = True,
     beam_width: int = 1,
     branch_width: int = 1,
+    beam_elite_frac: float = 0.25,
+    beam_lambda: float = 0.15,
+    branch_pool_mult: int = 20,
+    branch_lambda: float = 0.30,
 ) -> SCMModel:
     """Fit a Set Covering Machine model. 
 
@@ -68,6 +72,10 @@ def fit(
         disjunction (bool, optional): If `True`, fit a disjunction; if `False`, fit a conjunction. [True]
         beam_width (int, optional): Number of retained partial models per depth. [1]
         branch_width (int, optional): Number of candidate rules expanded per state. [1]
+        beam_elite_frac (float, optional): Fraction of beam kept as elite before MMR fill. [0.25]
+        beam_lambda (float, optional): MMR redundancy penalty for beam selection. [0.15]
+        branch_pool_mult (int, optional): Candidate pool multiplier before branch MMR rerank. [20]
+        branch_lambda (float, optional): MMR redundancy penalty for branch rule selection. [0.30]
 
     Returns:
         SCMModel: Immutable model object containing selected rule nodes,
@@ -75,6 +83,7 @@ def fit(
     """
     dis, nodes, pol, pred = _fit_native(
         nodes_start, nodes_stop, kmers_assembly_idx, is_target,
-        max_rules, p, disjunction, beam_width, branch_width
+        max_rules, p, disjunction, beam_width, branch_width,
+        beam_elite_frac, beam_lambda, branch_pool_mult, branch_lambda
     )
     return SCMModel(disjunction=dis, nodes=nodes, polarities=pol, pred=pred)

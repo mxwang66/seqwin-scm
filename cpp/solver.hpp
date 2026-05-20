@@ -23,5 +23,9 @@ FitResult fit_impl(
     double p,
     bool disjunction,
     int beam_width,
-    int branch_width
+    int branch_width,
+    double beam_elite_frac,
+    double beam_lambda,
+    int branch_pool_mult,
+    double branch_lambda
 );
