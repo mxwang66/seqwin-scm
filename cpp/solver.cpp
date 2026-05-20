@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <limits>
 #include <queue>
-#include <stdexcept>
 
 #include "solver.hpp"
 
@@ -331,9 +330,6 @@ std::vector<FitResult> fit_impl(
     initial_state.risk = static_cast<double>(n_initial_neg);
     initial_state.cumulative_utility = 0.0;
 
-    if (top_n < 1) {
-        throw std::invalid_argument("top_n must be >= 1");
-    }
 
     std::vector<SearchState> beam;
     beam.push_back(initial_state);

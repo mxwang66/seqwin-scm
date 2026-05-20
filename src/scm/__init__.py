@@ -64,6 +64,9 @@ def fit(
 ) -> list[SCMModel]:
     """Fit Set Covering Machine models and return the top results.
 
+    The input arrays are expected to come from Seqwin structures and use
+    exact dtypes for direct transfer to the C++ backend.
+
     Models are ranked by the solver's existing internal ordering and are not deduplicated.
     `top_n` controls how many top models are returned. The function always returns a
     `list[SCMModel]`, even when `top_n == 1`.
@@ -86,6 +89,7 @@ def fit(
 
     Returns:
         list[SCMModel]: Top models in best-first solver order. Each model includes
+        `disjunction`, `nodes`, `polarities`, `pred`, and
         `risk = p * transformed positives removed + transformed negatives remaining`.
     """
     raw_results = _fit_native(
