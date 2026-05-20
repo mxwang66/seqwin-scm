@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <limits>
 #include <queue>
+#include <stdexcept>
 
 #include "solver.hpp"
 
@@ -258,6 +259,28 @@ void apply_rule(
     }
 }
 
+
+
+static FitResult make_result_from_state(const SearchState& state, bool disjunction) {
+    FitResult res;
+    res.disjunction = disjunction;
+    res.nodes = state.rule_nodes;
+    res.polarities = state.rule_polarities;
+    res.pred = state.remaining;
+
+    if (disjunction) {
+        for (auto& pol : res.polarities) {
+            pol = 1 - pol;
+        }
+        for (auto& r : res.pred) {
+            r = 1 - r;
+        }
+    }
+
+    res.risk = state.risk;
+    return res;
+}
+
 static bool better_state(const SearchState& a, const SearchState& b, int n_initial_pos) {
     if (a.risk != b.risk) return a.risk < b.risk;
     if (a.n_remaining_neg != b.n_remaining_neg) return a.n_remaining_neg < b.n_remaining_neg;
@@ -268,7 +291,7 @@ static bool better_state(const SearchState& a, const SearchState& b, int n_initi
     return false;
 }
 
-FitResult fit_impl(
+std::vector<FitResult> fit_impl(
     const uint64_t* nodes_start,
     const uint64_t* nodes_stop,
     size_t n_nodes,
@@ -283,7 +306,8 @@ FitResult fit_impl(
     double beam_elite_frac,
     double beam_lambda,
     int branch_pool_mult,
-    double branch_lambda
+    double branch_lambda,
+    int top_n
 ) {
     std::vector<uint8_t> y(n_assemblies);
     int n_initial_pos = 0;
@@ -307,9 +331,15 @@ FitResult fit_impl(
     initial_state.risk = static_cast<double>(n_initial_neg);
     initial_state.cumulative_utility = 0.0;
 
+    if (top_n < 1) {
+        throw std::invalid_argument("top_n must be >= 1");
+    }
+
     std::vector<SearchState> beam;
     beam.push_back(initial_state);
-    SearchState best_state_seen = initial_state;
+
+    std::vector<SearchState> best_states_seen;
+    best_states_seen.push_back(initial_state);
 
     std::vector<int> seen_stamp(n_assemblies, 0);
     int stamp = 1;
@@ -352,9 +382,14 @@ FitResult fit_impl(
                 child.risk = p * static_cast<double>(removed_positive_total) + static_cast<double>(child.n_remaining_neg);
                 child.cumulative_utility = state.cumulative_utility + cand.utility;
 
-                // Track the best risk state seen at any depth
-                if (better_state(child, best_state_seen, n_initial_pos)) {
-                    best_state_seen = child;
+                best_states_seen.push_back(child);
+                std::stable_sort(best_states_seen.begin(), best_states_seen.end(),
+                    [n_initial_pos](const SearchState& a, const SearchState& b) {
+                        return better_state(a, b, n_initial_pos);
+                    }
+                );
+                if (static_cast<int>(best_states_seen.size()) > top_n) {
+                    best_states_seen.resize(static_cast<size_t>(top_n));
                 }
                 children.push_back(std::move(child));
             }
@@ -434,23 +469,10 @@ FitResult fit_impl(
         beam = std::move(children);
     }
 
-    std::vector<int64_t> rule_nodes = std::move(best_state_seen.rule_nodes);
-    std::vector<uint8_t> rule_polarities = std::move(best_state_seen.rule_polarities);
-    std::vector<uint8_t> remaining = std::move(best_state_seen.remaining);
-
-    if (disjunction) {
-        for (auto& pol : rule_polarities) {
-            pol = 1 - pol;
-        }
-        for (auto& r : remaining) {
-            r = 1 - r;
-        }
+    std::vector<FitResult> results;
+    results.reserve(best_states_seen.size());
+    for (const auto& state : best_states_seen) {
+        results.push_back(make_result_from_state(state, disjunction));
     }
-
-    FitResult res;
-    res.disjunction = disjunction;
-    res.nodes = std::move(rule_nodes);
-    res.polarities = std::move(rule_polarities);
-    res.pred = std::move(remaining);
-    return res;
+    return results;
 }

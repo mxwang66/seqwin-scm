@@ -8,11 +8,12 @@ struct FitResult {
     std::vector<int64_t> nodes;
     std::vector<uint8_t> polarities; // 0 or 1
     std::vector<uint8_t> pred;       // 0 or 1 (final remaining mask)
+    double risk;
 };
 
 // Perform fitting. The arrays nodes_start, nodes_stop have length n_nodes,
 // and is_target has length n_assemblies. Dtypes must match exactly.
-FitResult fit_impl(
+std::vector<FitResult> fit_impl(
     const uint64_t* nodes_start,
     const uint64_t* nodes_stop,
     size_t n_nodes,
@@ -27,5 +28,6 @@ FitResult fit_impl(
     double beam_elite_frac,
     double beam_lambda,
     int branch_pool_mult,
-    double branch_lambda
+    double branch_lambda,
+    int top_n
 );

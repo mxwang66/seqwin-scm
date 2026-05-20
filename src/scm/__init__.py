@@ -2,7 +2,7 @@
 SCM
 ===
 
-Set Covering Machine (SCM) model fitting. It is designed to fit SCM models on Seqwin-derived arrays. 
+Set Covering Machine (SCM) model fitting. It is designed to fit SCM models on Seqwin-derived arrays.
 
 Dependencies:
 -------------
@@ -32,23 +32,27 @@ class SCMModel:
     """Fitted Set Covering Machine model.
 
     Attributes:
-        disjunction (bool): `True` for a disjunction model, `False` for a conjunction model. 
-        nodes (NDArray[np.int64]): Indices of selected nodes (one per rule). 
-        polarities (NDArray[np.uint8]): Rule polarity per selected node: `0` for presence, `1` for absence. 
-        pred (NDArray[np.uint8]): Final per-assembly predictions as `0`/`1` labels (non-target/target). 
+        disjunction (bool): `True` for a disjunction model, `False` for a conjunction model.
+        nodes (NDArray[np.int64]): Indices of selected nodes (one per rule).
+        polarities (NDArray[np.uint8]): Rule polarity per selected node: `0` for presence, `1` for absence.
+        pred (NDArray[np.uint8]): Final per-assembly predictions as `0`/`1` labels (non-target/target).
+        risk (float): Internal weighted training error:
+            `risk = p * transformed positives removed + transformed negatives remaining`.
     """
     disjunction: bool
     nodes: NDArray[np.int64]
     polarities: NDArray[np.uint8]
     pred: NDArray[np.uint8]
+    risk: float
+
 
 def fit(
-    nodes_start: NDArray[np.uint64], 
-    nodes_stop: NDArray[np.uint64], 
-    kmers_assembly_idx: NDArray[np.uint16], 
-    is_target: NDArray[np.uint8], 
-    max_rules: int, 
-    p: float = 1.0, 
+    nodes_start: NDArray[np.uint64],
+    nodes_stop: NDArray[np.uint64],
+    kmers_assembly_idx: NDArray[np.uint16],
+    is_target: NDArray[np.uint8],
+    max_rules: int,
+    p: float = 1.0,
     disjunction: bool = True,
     beam_width: int = 1,
     branch_width: int = 1,
@@ -56,18 +60,20 @@ def fit(
     beam_lambda: float = 0.15,
     branch_pool_mult: int = 20,
     branch_lambda: float = 0.30,
-) -> SCMModel:
-    """Fit a Set Covering Machine model. 
+    top_n: int = 1,
+) -> list[SCMModel]:
+    """Fit Set Covering Machine models and return the top results.
 
-    The input arrays are expected to come from Seqwin structures and use
-    exact dtypes for direct transfer to the C++ backend. 
+    Models are ranked by the solver's existing internal ordering and are not deduplicated.
+    `top_n` controls how many top models are returned. The function always returns a
+    `list[SCMModel]`, even when `top_n == 1`.
 
     Args:
-        nodes_start (NDArray[np.uint64]): C-contiguous copy of `nodes['start']`. 
-        nodes_stop (NDArray[np.uint64]): C-contiguous copy of `nodes['stop']`. 
-        kmers_assembly_idx (NDArray[np.uint16]): C-contiguous copy of `kmers['assembly_idx']`. 
-        is_target (NDArray[np.uint8]): `np.uint8` array converted from `assemblies['is_target']`. 
-        max_rules (int): Maximum number of rules to include in the fitted model. 
+        nodes_start (NDArray[np.uint64]): C-contiguous copy of `nodes['start']`.
+        nodes_stop (NDArray[np.uint64]): C-contiguous copy of `nodes['stop']`.
+        kmers_assembly_idx (NDArray[np.uint16]): C-contiguous copy of `kmers['assembly_idx']`.
+        is_target (NDArray[np.uint8]): `np.uint8` array converted from `assemblies['is_target']`.
+        max_rules (int): Maximum number of rules to include in each fitted model.
         p (float, optional): Utility penalty for removed positive examples (typically >= 1.0). [1.0]
         disjunction (bool, optional): If `True`, fit a disjunction; if `False`, fit a conjunction. [True]
         beam_width (int, optional): Number of retained partial models per depth. [1]
@@ -76,14 +82,25 @@ def fit(
         beam_lambda (float, optional): MMR redundancy penalty for beam selection. [0.15]
         branch_pool_mult (int, optional): Candidate pool multiplier before branch MMR rerank. [20]
         branch_lambda (float, optional): MMR redundancy penalty for branch rule selection. [0.30]
+        top_n (int, optional): Number of top models to return. [1]
 
     Returns:
-        SCMModel: Immutable model object containing selected rule nodes,
-        polarities, and per-assembly predictions. 
+        list[SCMModel]: Top models in best-first solver order. Each model includes
+        `risk = p * transformed positives removed + transformed negatives remaining`.
     """
-    dis, nodes, pol, pred = _fit_native(
+    raw_results = _fit_native(
         nodes_start, nodes_stop, kmers_assembly_idx, is_target,
         max_rules, p, disjunction, beam_width, branch_width,
-        beam_elite_frac, beam_lambda, branch_pool_mult, branch_lambda
+        beam_elite_frac, beam_lambda, branch_pool_mult, branch_lambda,
+        top_n,
     )
-    return SCMModel(disjunction=dis, nodes=nodes, polarities=pol, pred=pred)
+    return [
+        SCMModel(
+            disjunction=dis,
+            nodes=nodes,
+            polarities=pol,
+            pred=pred,
+            risk=float(risk),
+        )
+        for dis, nodes, pol, pred, risk in raw_results
+    ]
