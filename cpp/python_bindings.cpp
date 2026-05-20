@@ -6,6 +6,35 @@
 
 namespace py = pybind11;
 
+static py::tuple fit_result_to_python_tuple(FitResult&& res) {
+    auto res_owner = std::make_shared<FitResult>(std::move(res));
+    auto capsule = py::capsule(
+        new std::shared_ptr<FitResult>(res_owner),
+        [](void* p) { delete static_cast<std::shared_ptr<FitResult>*>(p); }
+    );
+
+    auto py_nodes = py::array_t<int64_t>(
+        {static_cast<py::ssize_t>(res_owner->nodes.size())},
+        {static_cast<py::ssize_t>(sizeof(int64_t))},
+        res_owner->nodes.data(),
+        capsule
+    );
+    auto py_pol = py::array_t<uint8_t>(
+        {static_cast<py::ssize_t>(res_owner->polarities.size())},
+        {static_cast<py::ssize_t>(sizeof(uint8_t))},
+        res_owner->polarities.data(),
+        capsule
+    );
+    auto py_pred = py::array_t<uint8_t>(
+        {static_cast<py::ssize_t>(res_owner->pred.size())},
+        {static_cast<py::ssize_t>(sizeof(uint8_t))},
+        res_owner->pred.data(),
+        capsule
+    );
+
+    return py::make_tuple(res_owner->disjunction, py_nodes, py_pol, py_pred, res_owner->risk);
+}
+
 PYBIND11_MODULE(_core, m) {
     m.doc() = "Core SCM implementation (C++ via pybind11)";
 
@@ -15,9 +44,9 @@ PYBIND11_MODULE(_core, m) {
            py::array_t<uint16_t> kmers_assembly_idx,
            py::array_t<uint8_t> is_target,
            int max_rules, double p, bool disjunction, int beam_width, int branch_width,
-           double beam_elite_frac, double beam_lambda, int branch_pool_mult, double branch_lambda
+           double beam_elite_frac, double beam_lambda, int branch_pool_mult, double branch_lambda,
+           int top_n
         ) {
-            // Extract raw pointers and sizes
             auto ns_buf = nodes_start.request();
             auto no_buf = nodes_stop.request();
             auto km_buf = kmers_assembly_idx.request();
@@ -29,43 +58,24 @@ PYBIND11_MODULE(_core, m) {
             size_t n_nodes = ns_buf.shape[0];
             size_t n_assemblies = it_buf.shape[0];
 
-            FitResult res;
+            std::vector<FitResult> native_results;
             {
                 py::gil_scoped_release release;
-                res = fit_impl(
+                native_results = fit_impl(
                     ns_ptr, no_ptr, n_nodes,
                     km_ptr,
                     it_ptr, n_assemblies,
                     max_rules, p, disjunction, beam_width, branch_width,
-                    beam_elite_frac, beam_lambda, branch_pool_mult, branch_lambda
+                    beam_elite_frac, beam_lambda, branch_pool_mult, branch_lambda,
+                    top_n
                 );
             }
-            auto res_owner = std::make_shared<FitResult>(std::move(res));
-            auto capsule = py::capsule(
-                new std::shared_ptr<FitResult>(res_owner),
-                [](void* p) { delete static_cast<std::shared_ptr<FitResult>*>(p); }
-            );
 
-            auto py_nodes = py::array_t<int64_t>(
-                {static_cast<py::ssize_t>(res_owner->nodes.size())},
-                {static_cast<py::ssize_t>(sizeof(int64_t))},
-                res_owner->nodes.data(),
-                capsule
-            );
-            auto py_pol = py::array_t<uint8_t>(
-                {static_cast<py::ssize_t>(res_owner->polarities.size())},
-                {static_cast<py::ssize_t>(sizeof(uint8_t))},
-                res_owner->polarities.data(),
-                capsule
-            );
-            auto py_pred = py::array_t<uint8_t>(
-                {static_cast<py::ssize_t>(res_owner->pred.size())},
-                {static_cast<py::ssize_t>(sizeof(uint8_t))},
-                res_owner->pred.data(),
-                capsule
-            );
-
-            return py::make_tuple(res_owner->disjunction, py_nodes, py_pol, py_pred);
+            py::list py_results;
+            for (auto& res : native_results) {
+                py_results.append(fit_result_to_python_tuple(std::move(res)));
+            }
+            return py_results;
         },
         py::arg("nodes_start"),
         py::arg("nodes_stop"),
@@ -79,6 +89,7 @@ PYBIND11_MODULE(_core, m) {
         py::arg("beam_elite_frac") = 0.25,
         py::arg("beam_lambda") = 0.15,
         py::arg("branch_pool_mult") = 20,
-        py::arg("branch_lambda") = 0.30
+        py::arg("branch_lambda") = 0.30,
+        py::arg("top_n") = 1
     );
 }
